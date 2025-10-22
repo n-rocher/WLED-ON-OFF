@@ -1,0 +1,42 @@
+# Visual Studio specific
+*.sln.docstates
+*.suo
+*.user
+*.vcxproj.filters
+*.vcxproj.user
+.vs/
+
+# Build results
+[Bb]in/
+[Dd]ebug/
+[Rr]elease/
+x64/
+Win32/
+ARM/
+ARM64/
+[Oo]bj/
+
+# Build artifacts
+*.obj
+*.obj.enc
+*.ilk
+*.pdb
+*.pdb.srcsrv
+*.idb
+*.tlog
+*.log
+*.exe
+*.dll
+*.lib
+*.sbr
+*.map
+*.ipch
+
+# Package manager
+packages/
+
+# Other
+*.ncb
+*.aps
+*.opensdf
+*.sdf
