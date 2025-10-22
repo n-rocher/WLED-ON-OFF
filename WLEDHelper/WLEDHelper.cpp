@@ -13,15 +13,17 @@
 #include <WLEDCommon.h>
 
 // Global handle for power notifications so we can unregister it
-HPOWERNOTIFY g_hNotify = NULL;
+HPOWERNOTIFY g_hNotifyConsole = NULL;
 
 // ---- Window proc ----
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
+
     case WM_POWERBROADCAST:
         if (wParam == PBT_POWERSETTINGCHANGE) {
             auto* pbs = (POWERBROADCAST_SETTING*)lParam;
-            if (IsEqualGUID(pbs->PowerSetting, GUID_CONSOLE_DISPLAY_STATE)) {
+
+           if (IsEqualGUID(pbs->PowerSetting, GUID_CONSOLE_DISPLAY_STATE)) {
                 DWORD state = *(DWORD*)pbs->Data;
                 if (state == 0) {
                     Log("Display turned OFF (user session).");
@@ -50,9 +52,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         break;
 
     case WM_DESTROY:
-        if (g_hNotify) {
-            UnregisterPowerSettingNotification(g_hNotify);
-        }
+        if (g_hNotifyConsole) UnregisterPowerSettingNotification(g_hNotifyConsole);
         WTSUnRegisterSessionNotification(hwnd);
         PostQuitMessage(0);
         break;
@@ -90,14 +90,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
     }
 
     // Register for display power notifications
-    g_hNotify = RegisterPowerSettingNotification(
-        hwnd, &GUID_CONSOLE_DISPLAY_STATE, DEVICE_NOTIFY_WINDOW_HANDLE);
-
-    if (!g_hNotify) {
-        Log("Failed to register for display notifications (user helper). Exiting.");
-        WTSUnRegisterSessionNotification(hwnd);
-        return 1;
-    }
+    g_hNotifyConsole = RegisterPowerSettingNotification(hwnd, &GUID_CONSOLE_DISPLAY_STATE, DEVICE_NOTIFY_WINDOW_HANDLE);
 
     Log("WLEDHelper started and running in background.");
 
@@ -108,9 +101,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE, LPSTR, int) {
         DispatchMessage(&msg);
     }
 
-    if (g_hNotify) {
-        UnregisterPowerSettingNotification(g_hNotify);
-    }
+    if (g_hNotifyConsole) UnregisterPowerSettingNotification(g_hNotifyConsole);
     WTSUnRegisterSessionNotification(hwnd);
 
     Log("WLEDHelper stopped.");
