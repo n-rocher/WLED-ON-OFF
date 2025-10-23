@@ -19,27 +19,29 @@ namespace winrt::WLEDSettings::implementation
         MainWindow();
 
         void OnSaveClick(winrt::Windows::Foundation::IInspectable const&, winrt::Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnColorChanged(winrt::Microsoft::UI::Xaml::Controls::ColorPicker const&, winrt::Microsoft::UI::Xaml::Controls::ColorChangedEventArgs const&);
+        void OnColorSpectrum_ColorChanged(winrt::WLEDSettings::ColorSpectrum const& sender, Windows::UI::Color const& color);
         void OnConfigTextChanged(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::Controls::TextChangedEventArgs const& e);
         void OnRetryClick(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::RoutedEventArgs const& e);
-
+        void OnBrightnessSliderChanged(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& e);
+   
     private:
         void LoadConfig();
         void SaveConfig();
         winrt::hstring ConfigPath();
         void EnsureRegKey();
         winrt::Windows::Foundation::IAsyncAction UpdateStatusAsync();
-        winrt::Windows::Foundation::IAsyncAction SendColorAsync(uint8_t r, uint8_t g, uint8_t b);
+        winrt::Windows::Foundation::IAsyncAction SendColorAsync(uint8_t r, uint8_t g, uint8_t b, uint8_t a);
 
         winrt::Windows::Web::Http::HttpClient m_http{ nullptr };
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_timer{ nullptr };
 
         int m_ledCount = 0;
+        winrt::Windows::UI::Color m_color{ 255, 255, 255, 255 };
 
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_debounceTimer{ nullptr };
         winrt::Microsoft::UI::Xaml::DispatcherTimer m_throttleTimer{ nullptr };
         bool m_colorUpdatePending = false;
-        winrt::Windows::UI::Color m_currentColor{};
+        bool is_connected = false;
 
         // UI helpers (brushes)
         winrt::Microsoft::UI::Xaml::Media::SolidColorBrush m_green{ winrt::Microsoft::UI::Colors::Green() };

@@ -1,0 +1,14 @@
+
+namespace WLEDSettings
+{
+
+    [default_interface]
+    runtimeclass ColorSpectrum : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        ColorSpectrum();
+
+        Windows.UI.Color SelectedColor;
+
+        event Windows.Foundation.TypedEventHandler<ColorSpectrum, Windows.UI.Color> ColorChanged;
+    };
+}

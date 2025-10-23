@@ -51,20 +51,14 @@ namespace winrt::WLEDSettings::implementation
         window.Activate();
 
         const int windowWidth = 600;
-        const int windowHeight = 950;
+        const int windowHeight = 550;
 
         auto windowNative = window.as<IWindowNative>();
         HWND m_hwnd;
         windowNative->get_WindowHandle(&m_hwnd);
-
-        // 3. Get the WindowId from the HWND
         auto windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(m_hwnd);
-
-        // 4. Get the AppWindow (which controls size/position)
         auto appWindow = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(windowId);
        
-        appWindow.Title(L"This is a title");
-
         OverlappedPresenter presenter = OverlappedPresenter::Create();
 
         presenter.IsAlwaysOnTop(false);

@@ -14,7 +14,6 @@
 
 #include <windows.h> // Required for OutputDebugStringW
 #include <sstream>     // Required for wstringstream
-#include <string>      // Required for std::to_wstring (already used in your code, but good practice)
 
 using namespace winrt;
 using namespace winrt::Microsoft::UI;
@@ -55,9 +54,6 @@ namespace winrt::WLEDSettings::implementation
         InitializeComponent();
         ExtendsContentIntoTitleBar(true);
 
-        // Wire events
-        Picker().ColorChanged({ this, &MainWindow::OnColorChanged });
-
         // Http client
         m_http = HttpClient{};
 
@@ -76,13 +72,13 @@ namespace winrt::WLEDSettings::implementation
 
         // --- 2. Throttling Setup (for ColorPicker) ---
         m_throttleTimer = DispatcherTimer{};
-        m_throttleTimer.Interval(std::chrono::milliseconds(100)); // Execute every 50ms
+        m_throttleTimer.Interval(std::chrono::milliseconds(200)); 
         m_throttleTimer.Tick([this](IInspectable const&, IInspectable const&) {
             // Check if the color has changed since the last tick
-            if (m_colorUpdatePending)
-            {
+            if (m_colorUpdatePending) {
+
                 // Execute the network call
-                SendColorAsync(m_currentColor.R, m_currentColor.G, m_currentColor.B);
+                SendColorAsync(m_color.R, m_color.G, m_color.B, m_color.A);
 
                 // Reset the flag to wait for the next color change
                 m_colorUpdatePending = false;
@@ -225,6 +221,7 @@ namespace winrt::WLEDSettings::implementation
 
     // -------- UI EVENTS --------
 
+
 // --- DEBOUNCE LOGIC ---
     void MainWindow::OnConfigTextChanged(IInspectable const&, TextChangedEventArgs const&)
     {
@@ -242,14 +239,31 @@ namespace winrt::WLEDSettings::implementation
         UpdateStatusAsync();
     }
 
+
+
     void MainWindow::OnSaveClick(IInspectable const&, RoutedEventArgs const&)
     {
         SaveConfig();
     }
 
-    void MainWindow::OnColorChanged(Microsoft::UI::Xaml::Controls::ColorPicker const&, Microsoft::UI::Xaml::Controls::ColorChangedEventArgs const& e)
+    void MainWindow::OnBrightnessSliderChanged(winrt::Windows::Foundation::IInspectable const& sender, winrt::Microsoft::UI::Xaml::Controls::Primitives::RangeBaseValueChangedEventArgs const& e)
     {
-        m_currentColor = e.NewColor();
+        if (is_connected) {
+            m_color.A = e.NewValue();
+            m_colorUpdatePending = true;
+        }
+    }
+
+   void MainWindow::OnColorSpectrum_ColorChanged(winrt::WLEDSettings::ColorSpectrum const& sender, Windows::UI::Color const& color)
+    {
+
+        winrt::Microsoft::UI::Xaml::Media::SolidColorBrush brush{ color };
+        ColorPreview().Background(brush);
+
+        m_color.R = color.R;
+        m_color.G = color.G;
+        m_color.B = color.B;
+
         m_colorUpdatePending = true;
     }
 
@@ -257,48 +271,99 @@ namespace winrt::WLEDSettings::implementation
 
     IAsyncAction MainWindow::UpdateStatusAsync()
     {
-        auto lifetime = get_strong(); // keep this alive during co_await
+        auto lifetime = get_strong();
         StatusDot().Fill(m_orange);
         StatusText().Text(L"Connecting...");
-        InfoText().Text(L"-");
+        InfoText().Text(L"");
+        is_connected = false;
 
         try
         {
             hstring host = HostBox().Text();
             hstring port = PortBox().Text();
-            hstring url = L"http://" + host + L":" + port + L"/json/info";
+            hstring url_info = L"http://" + host + L":" + port + L"/json/info";
 
-            HttpResponseMessage resp = co_await m_http.GetAsync(Windows::Foundation::Uri{ url });
-            if (!resp.IsSuccessStatusCode()) co_return; // skip throwing
+            HttpResponseMessage resp_info = co_await m_http.GetAsync(Windows::Foundation::Uri{ url_info });
+            if (!resp_info.IsSuccessStatusCode()) co_return;
 
-            hstring body = co_await resp.Content().ReadAsStringAsync();
-            auto info = JsonObject::Parse(body);
+            hstring body_info = co_await resp_info.Content().ReadAsStringAsync();
+            auto info = JsonObject::Parse(body_info);
 
             auto ver = JsonSafeGetString(info, L"ver", L"?");
             int leds = 0;
 
-            if (info.HasKey(L"leds") && info.GetNamedValue(L"leds").ValueType() == JsonValueType::Object)
-            {
+            if (info.HasKey(L"leds") && info.GetNamedValue(L"leds").ValueType() == JsonValueType::Object) {
                 auto ledsObj = info.GetNamedObject(L"leds");
                 leds = JsonSafeGetInt(ledsObj, L"count", 0);
             }
-
             m_ledCount = leds;
+
+            // --- STATE CALL (for color/brightness) ---
+            hstring url_state = L"http://" + host + L":" + port + L"/json/state";
+            HttpResponseMessage resp_state = co_await m_http.GetAsync(Windows::Foundation::Uri{ url_state });
+            if (!resp_state.IsSuccessStatusCode()) co_return;
+
+            hstring body_state = co_await resp_state.Content().ReadAsStringAsync();
+            auto state = JsonObject::Parse(body_state);
+
+            // Brightness
+            if (state.HasKey(L"bri") && state.GetNamedValue(L"bri").ValueType() == JsonValueType::Number)
+            {
+                m_color.A = static_cast<uint8_t>(state.GetNamedNumber(L"bri"));
+                BrightnessSlider().Value(m_color.A);
+            }
+
+            // Solid color (first segment, first color)
+            if (state.HasKey(L"seg") && state.GetNamedValue(L"seg").ValueType() == JsonValueType::Array)
+            {
+                auto segArray = state.GetNamedArray(L"seg");
+                if (segArray.Size() > 0)
+                {
+                    auto segObj = segArray.GetObjectAt(0);
+                    if (segObj.HasKey(L"col"))
+                    {
+                        auto colArray = segObj.GetNamedArray(L"col");
+                        if (colArray.Size() > 0 && colArray.GetAt(0).ValueType() == JsonValueType::Array)
+                        {
+                            auto rgb = colArray.GetAt(0).GetArray();
+                            if (rgb.Size() >= 3)
+                            {
+                                m_color.R = static_cast<uint8_t>(rgb.GetNumberAt(0));
+                                m_color.G = static_cast<uint8_t>(rgb.GetNumberAt(1));
+                                m_color.B = static_cast<uint8_t>(rgb.GetNumberAt(2));
+
+                                // Update preview UI
+                                Windows::UI::Color newColor{
+                                    255,
+                                    m_color.R,
+                                    m_color.G,
+                                    m_color.B
+                                };
+                                winrt::Microsoft::UI::Xaml::Media::SolidColorBrush brush{ newColor };
+                                ColorPreview().Background(brush);
+                            }
+                        }
+                    }
+                }
+            }
 
             StatusDot().Fill(m_green);
             StatusText().Text(L"Connected");
             InfoText().Text(L"v" + ver + L" • " + to_hstring(leds) + L" LEDs");
+            is_connected = true;
+
         }
         catch (...)
         {
             StatusDot().Fill(m_red);
             StatusText().Text(L"Failed to connect");
-            InfoText().Text(L"-");
+            InfoText().Text(L"");
+            is_connected = false;
         }
         co_return;
     }
 
-    IAsyncAction MainWindow::SendColorAsync(uint8_t r, uint8_t g, uint8_t b)
+    IAsyncAction MainWindow::SendColorAsync(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
     {
         auto lifetime = get_strong();
         try
@@ -310,10 +375,20 @@ namespace winrt::WLEDSettings::implementation
 
             hstring url = L"http://" + host + L":" + port + L"/json/state";
 
-            std::wstring jsonBody = L"{\"on\":true,\"bri\":255,\"seg\":[{\"id\":0,\"start\":0,\"stop\":" + std::to_wstring(m_ledCount) + L",\"col\":[["
+            std::wstring jsonBody = L"{\"on\":true,\"bri\":" + std::to_wstring(a) + L",\"seg\":[{\"id\":0,\"start\":0,\"stop\":" + std::to_wstring(m_ledCount) + L",\"col\":[["
                 + std::to_wstring(r) + L","
                 + std::to_wstring(g) + L","
                 + std::to_wstring(b) + L"]]}]}";
+
+            {
+                std::wstringstream ss;
+                ss << L"[SendColorAsync] Sending to " << url.c_str() << L"\n"
+                    << L"  RGB=(" << (int)r << L"," << (int)g << L"," << (int)b << L")"
+                    << L"  Brightness=" << (int)a
+                    << L"  LEDCount=" << m_ledCount << L"\n"
+                    << L"  Body=" << jsonBody << L"\n";
+                OutputDebugStringW(ss.str().c_str());
+            }
 
             HttpStringContent content{ jsonBody, Windows::Storage::Streams::UnicodeEncoding::Utf8, L"application/json" };
             co_await m_http.PostAsync(Windows::Foundation::Uri{ url }, content);
