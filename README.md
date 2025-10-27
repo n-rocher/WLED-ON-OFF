@@ -6,22 +6,14 @@
 
 WLED On/Off keeps your [WLED](https://kno.wled.ge/) strip in step with your Windows PC. A background service and helper watch for startup, sleep, and lock events while the settings app lets you configure and test the connection. 
 
-## Project Structure
-
-- `WLEDCommon/` - Shared library consumed by the service, and helper.
-- `WLEDService/` - Service entry point + install/uninstall helpers.
-- `WLEDHelper/` - User-mode message window that subscribes to session and display notifications.
-- `WLEDSettings/` - Configuration UI app.
-- `WLEDInstaller/` - Setup project that produces an MSI, and installs the service.
-
-## Configuration
+### Configuration
 
 1. Launch **WLED On-Off** (elevated) and update the hostname/port fields.
 2. Use the status info to check if your computer is connected to the WLED controller.
 3. Adjust the color and brightness of the LED strip.
 4. Press "Save" to save the configuration.
 
-## Behaviour Overview
+### Behaviour Overview
 
 | Event | Component | Action |
 |-------|-----------|--------|
@@ -41,6 +33,14 @@ WLED On/Off keeps your [WLED](https://kno.wled.ge/) strip in step with your Wind
 - A reachable WLED controller on your network.
 - Visual Studio 2022 (or newer) with the **Desktop development with C++** workload.
 - (Optional) Visual Studio Installer Projects extension to build `WLEDInstaller`.
+
+### Project Structure
+
+- `WLEDCommon/` - Shared library consumed by the service, and helper.
+- `WLEDService/` - Service entry point + install/uninstall helpers.
+- `WLEDHelper/` - User-mode message window that subscribes to session and display notifications.
+- `WLEDSettings/` - Configuration UI app.
+- `WLEDInstaller/` - Setup project that produces an MSI, and installs the service.
 
 ### Instructions
 1. Open `WLED-ON-OFF.sln` in Visual Studio 2022.
