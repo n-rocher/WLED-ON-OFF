@@ -1,5 +1,5 @@
 ﻿<p align="center">
-  <img src="icon.png" alt="WLED On/Off Logo" height="120">
+  <img src="icon.png" alt="WLED On/Off Logo" height="160">
 </p>
 
 # WLED On/Off Automation for Windows
