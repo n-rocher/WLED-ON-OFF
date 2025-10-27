@@ -35,12 +35,10 @@ Together they ensure the WLED device mirrors the system’s activity so you neve
 The WLED endpoint and log file location are defined in `WLEDCommon/WLEDCommon.cpp`:
 
 ```cpp
-const char* WLED_IP   = "192.168.1.191";
-const int   WLED_PORT = 80;
 const char* LOG_PATH  = "C:\\ProgramData\\WLEDService.log";
 ```
 
-1. Change `WLED_IP` (and `WLED_PORT` if needed) to match your controller.
+1. Use the **WLEDSettings** app to update the hostname (`HKLM\SOFTWARE\WLEDController\hostname`) and port (`…\port`). The helper and service read these values at runtime (falling back to `192.168.1.191:80` if unavailable).
 2. Adjust `LOG_PATH` if you prefer a different location; the process must have write access.
 3. Rebuild both the **WLEDCommon** library and the two executables so they pick up the new settings.
 
